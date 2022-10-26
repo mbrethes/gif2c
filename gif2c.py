@@ -159,7 +159,7 @@ def convertImage(f, imagename, dataname, anim_height, anim_width):
     
 
 if len(sys.argv) < 4:
-    print('Usage: python {} (image.gif/png dataname [h=anim_height *or* w=anim_width]) [image dataname [h or w]] ... output.c'.format(sys.argv[0]))
+    print('Usage: python {} (image.gif/png dataname [h=anim_height *or* w=anim_width]) [image2.gif/.png dataname2 [h= / w=]] ... output.c'.format(sys.argv[0]))
     print('  [h=anim_height] : if set, cuts the image in slices of anim_height pixels (each becomes an independent image).')
     print('  [w=anim_width] : if set, cuts the image in slices of anim_width pixels.')
     print("  /!\ The program's function is undefined if both are set")
