@@ -86,13 +86,13 @@ In that case, if several of your animations share identical frames, gif2c.py wil
 
 You can then use the C file into your [VidMax7219](https://github.com/mbrethes/vidmax7219) project.
 
-## 4. The generated C file in more detail
+# The generated C file in more detail
 
 Let us invoke gif2c with this 9x8 pixel example image ![An example pixellated image](extra/exampleImage.png "An example pixellated image"):
 
     python3 gif2c exampleImage.png myImage exampleImage.c
 
-The generated data will look like this:
+The generated data will look like [this](extra/exampleImage.c):
 
 All the variables are prefixed with _myImage_, that you have defined above in the command line.
 
