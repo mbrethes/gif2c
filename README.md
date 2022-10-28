@@ -21,7 +21,7 @@ This program is free software: you can redistribute it and/or modify it under th
 
 This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>. 
+You should have received a copy of the [GNU General Public License](LICENSE) along with this program. If not, see <https://www.gnu.org/licenses/>. 
 
 ## Dependencies
 
@@ -64,32 +64,127 @@ Let us assume that you made a 32x24 image, that you want to turn into a 3-frame 
 
 ![An example pixellated image](extra/example-pic.png "An example pixellated image")
 
-Open your favorite command-line tool and launch the program with the following command line:
+Open your favorite command-line tool. The program can be launched with a command line as simple as this:
 
     python3 gif2c.py example-pic.png myImage mycfile.c
 
-This will generate a single 32x24 equivalent of your image divided into 4 subframes, and indexes containing a pointer to each single 32x24 subframe.
+This will generate a single 32x24 equivalent of your image, ready for use with VidMax7219 (a more detailed explanation of the generated format is in the next section).
 
-Now, to divide your image into animation frames, use the -h= switch and specify the height of your frame in pixels:
+But as you want to divide your image into animation frames, use the -h= switch and specify the height of your frame in pixels:
 
     python3 gif2c.py example-pic.png myImage -h=8 mycfile.c
 
-Now mycfile.c will contain 3 images of size 32x8, with the first frame corresponding to the topmost part of your original image, the second the middle, the third the bottom. It
-will also contain four index arrays pointing to each 3 pointers to the 3 32x8 frames.
+Now mycfile.c will contain 3 images of size 32x8, with the first frame corresponding to the topmost part of your original image, the second the middle, the third the bottom.
 
 _Alternatively, if you have divided your animation sequence horizontally, you can use the -w= switch instead to divide horizontally._
 
-Finally, you can optimize your C import by importing all your images at the same time in the script:
+When you have several images and animations for your project, you can optimize your C import by importing all your images at the same time in the script:
 
     python3 gif2c.py example1.png myAnimation1 -h=8 example2.png myAnimation2 -w=8 example3.png myStaticImage mycfile.c
     
-In that case, if several of your animations share identical frames, gif2c.py will detect them and generate index arrays pointing to a single frame instead of the copies.
+In that case, if several of your animations share identical frames, gif2c.py will detect them and remove the dopplegängers from the C file, thus saving space.
 
 You can then use the C file into your [VidMax7219](https://github.com/mbrethes/vidmax7219) project.
 
+## 4. The generated C file in more detail
+
+Let us invoke gif2c with this 9x8 pixel example image ![An example pixellated image](extra/exampleImage.png "An example pixellated image"):
+
+    python3 gif2c exampleImage.png myImage exampleImage.c
+
+The generated data will look like this:
+
+All the variables are prefixed with _myImage_, that you have defined above in the command line.
+
+The first two lines contain information about the size of the image.
+
+    static const byte myImage_x = 9;
+    static const byte myImage_y = 8;
+
+Then we get binary data. Each frame is divided into up to 4 "subframes" labelled a, b, c, and d. They will be used by VidMax7219's image display functions.
+The subframes are necessary to handle the five intensities allowed by the driver (0%,25%,50%,75%,100%).
+This image data is stored in PROGMEM, that means, it does not use RAM on your Arduino.
+
+The frame names also contains numbers: myImage_Z_T
+
+* Z is the frame number in your animation, starting from 0, if your image is divided into frames using the X axis
+* T is the frame number in your animation, starting from 0, if your image is divided into frames using the Y axis
+
+Each pixel is represented in each subframe by a single bit, with 1 indicating VidMax7219 to turn a led on, and 0 to turn it off.
+When a pixel is set to 1 in all of the 4 subframes, it will be on 100% of the time (maximum display intensity). When it is 0 in all the
+subrames, it will be off (LED off). The intensity is then the sum of the bits at coordinates x-y in each subframe.
+
+Each line of the array corresponds to a line in the picture. If the X coordinates of your image is not a multiple of 8, then the
+last byte of the array is padded with 0s.
+
+If gif2c detects that some subframes are identical, the duplicates will be removed, so you may not always have a, b, c and d subframes.
+
+    static const PROGMEM byte myImage_0_0_a[] = {
+    0b10011100, 0b10000000, 
+    0b01111111, 0b00000000, 
+    0b11110111, 0b10000000, 
+    0b11111111, 0b10000000, 
+    0b01111111, 0b00000000, 
+    0b10111110, 0b10000000, 
+    0b11011101, 0b10000000, 
+    0b11101011, 0b10000000, 
+    }; 
+        
+    static const PROGMEM byte myImage_0_0_b[] = {
+    0b01100011, 0b00000000, 
+    0b11100011, 0b10000000, 
+    0b11111111, 0b10000000, 
+    0b11110111, 0b10000000, 
+    0b11111111, 0b10000000, 
+    0b01111111, 0b00000000, 
+    0b00101010, 0b00000000, 
+    0b00010100, 0b00000000, 
+    }; 
+    static const PROGMEM byte myImage_0_0_c[] = {
+    0b00000000, 0b00000000, 
+    0b01110111, 0b00000000, 
+    0b11110111, 0b10000000, 
+    0b11111111, 0b10000000, 
+    0b01111111, 0b00000000, 
+    0b00111110, 0b00000000, 
+    0b00011100, 0b00000000, 
+    0b00001000, 0b00000000, 
+    }; 
+    static const PROGMEM byte myImage_0_0_d[] = {
+    0b01100011, 0b00000000, 
+    0b11110111, 0b10000000, 
+    0b11111111, 0b10000000, 
+    0b11111111, 0b10000000, 
+    0b11111111, 0b10000000, 
+    0b01111111, 0b00000000, 
+    0b00111110, 0b00000000, 
+    0b00011100, 0b00000000, 
+    }; 
+
+Finally you get more information about the data: this is the length of your animation in number of frames,
+
+    static const int myImage_alength = 1;
+
+And those four arrays are the most important part, since those are what you are going to pass as parameters to VidMax7219 functions.
+These arrays can be long if your animation is long, so they are also stored in PROGMEM.
+
+They contain a sequence of references to the subframes to be used in order to display the image / the animation. You will always
+have four of them, and they will always be named _myImage_\_names\_a, b, c, and d.
+
+In the situation where gif2c has removed duplicate subframes, you are likely to find several times the same subframe in each array or
+even in different arrays.
+
+    static const PROGMEM byte* const myImage_names_a[] = {
+    myImage_0_0_a};
+    static const PROGMEM byte* const myImage_names_b[] = {
+    myImage_0_0_b};
+    static const PROGMEM byte* const myImage_names_c[] = {
+    myImage_0_0_c};
+    static const PROGMEM byte* const myImage_names_d[] = {
+    myImage_0_0_d};
+
 # TODO
 
-- Explain data format (maybe in the driver instead?)
 - Allow to use GIF animations
 
 ## Wishlist
